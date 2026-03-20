@@ -1,10 +1,9 @@
 import torch
 import numpy as np
-from PIL import Image, ImageOps, ImageSequence
+from PIL import Image, ImageOps
 import tempfile
 import os
 import zipfile
-import io
 from .s3_utils import get_s3_client, parse_s3_uri
 from .logger import logger
 
@@ -61,6 +60,22 @@ class LoadZipS3API:
     RETURN_NAMES = ("IMAGE", "MASK", "frame_count")
     FUNCTION = "load_zip"
 
+    @staticmethod
+    def _safe_extract(zip_ref, target_dir):
+        """
+        Extract archive members while preventing path traversal outside target_dir.
+        """
+        target_dir = os.path.abspath(target_dir)
+
+        for member in zip_ref.infolist():
+            member_path = os.path.abspath(os.path.join(target_dir, member.filename))
+            if os.path.commonpath([target_dir, member_path]) != target_dir:
+                raise ValueError(
+                    f"ZIP archive contains an invalid path: {member.filename}"
+                )
+
+        zip_ref.extractall(target_dir)
+
     def load_zip(
         self,
         s3_uri,
@@ -98,7 +113,7 @@ class LoadZipS3API:
             # Extract the ZIP file contents
             logger.info(f"Extracting ZIP file to temporary directory: {temp_dir}")
             with zipfile.ZipFile(temp_filename, "r") as zip_ref:
-                zip_ref.extractall(temp_dir)
+                self._safe_extract(zip_ref, temp_dir)
 
             # Find all image files in the extracted directory
             image_files = []

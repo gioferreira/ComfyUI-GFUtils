@@ -200,8 +200,11 @@ class Molde_Load_Image_Batch:
         allow_RGBA_output = allow_RGBA_output == "true"
 
         if not os.path.exists(path):
-            return (None,)
+            return (None, None)
         fl = self.BatchImageLoader(path, label, pattern)
+
+        if not fl.image_paths:
+            return (None, None)
 
         if mode == "single_image":
             image, filename = fl.get_image_by_id(index)

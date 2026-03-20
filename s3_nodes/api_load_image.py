@@ -68,6 +68,7 @@ class LoadImageS3API:
                 if i.mode == "I":
                     i = i.point(lambda i: i * (1 / 255))
                 image = i.convert("RGB")
+                width, height = image.size
                 image = np.array(image).astype(np.float32) / 255.0
                 image = torch.from_numpy(image)[None,]
 
@@ -75,7 +76,7 @@ class LoadImageS3API:
                     mask = np.array(i.getchannel("A")).astype(np.float32) / 255.0
                     mask = 1.0 - torch.from_numpy(mask)
                 else:
-                    mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+                    mask = torch.zeros((height, width), dtype=torch.float32, device="cpu")
 
                 output_images.append(image)
                 output_masks.append(mask.unsqueeze(0))
