@@ -13,7 +13,7 @@ class SaveTextToPath:
 
     RETURN_TYPES = ()
     FUNCTION = "save"
-    CATEGORY = "Molde Utils"
+    CATEGORY = "GFUtils"
     OUTPUT_NODE = True
 
     def save(self, text, filepath):

@@ -104,7 +104,7 @@ def get_sha256(file_path):
 
 
 # Text Concatenate
-class Molde_Text_Concatenate:
+class GFTextConcatenate:
     def __init__(self):
         pass
 
@@ -126,7 +126,7 @@ class Molde_Text_Concatenate:
     RETURN_TYPES = ("STRING",)
     FUNCTION = "text_concatenate"
 
-    CATEGORY = "Molde Utilities"
+    CATEGORY = "GFUtils"
 
     def text_concatenate(self, delimiter, clean_whitespace, **kwargs):
         text_inputs = []
@@ -159,7 +159,7 @@ class Molde_Text_Concatenate:
 
 
 # LOAD IMAGE BATCH
-class Molde_Load_Image_Batch:
+class GFLoadImageBatch:
     def __init__(self):
         pass
 
@@ -184,7 +184,7 @@ class Molde_Load_Image_Batch:
     RETURN_NAMES = ("image", "filename_text")
     FUNCTION = "load_batch_images"
 
-    CATEGORY = "Molde Utils"
+    CATEGORY = "GFUtils"
 
     def load_batch_images(
         self,
@@ -285,10 +285,11 @@ class Molde_Load_Image_Batch:
         if kwargs["mode"] != "single_image":
             return float("NaN")
         else:
-            fl = Molde_Load_Image_Batch.BatchImageLoader(
+            fl = GFLoadImageBatch.BatchImageLoader(
                 kwargs["path"], kwargs["label"], kwargs["pattern"]
             )
             filename = fl.get_current_image()
             image = os.path.join(kwargs["path"], filename)
             sha = get_sha256(image)
             return sha
+

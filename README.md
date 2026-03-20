@@ -1,7 +1,7 @@
-# ComfyUI-Molde-Utils
+# ComfyUI-GFUtils
 
 ## Overview
-ComfyUI-Molde-Utils is a small custom-node pack for ComfyUI.
+ComfyUI-GFUtils is a small custom-node pack for ComfyUI.
 
 It currently includes:
 - utility nodes such as text concatenation, hex-to-RGB conversion, bezier mapping, batch image loading, and text saving to an arbitrary path
@@ -24,7 +24,7 @@ It currently includes:
 ## Installation
 Clone this repository into your ComfyUI `custom_nodes` directory.
 
-Install the Python dependencies declared in [requirements.txt](/Users/giovani/repos/ComfyUI-Molde-Utils/requirements.txt):
+Install the Python dependencies declared in `requirements.txt`:
 
 ```bash
 pip install -r requirements.txt

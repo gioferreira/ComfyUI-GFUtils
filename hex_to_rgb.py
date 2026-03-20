@@ -10,7 +10,7 @@ class HexToRGB:
     RETURN_TYPES = ("INT", "INT", "INT")
     RETURN_NAMES = ("red", "green", "blue")
     FUNCTION = "hex_to_rgb"
-    CATEGORY = "Molde Utilities"
+    CATEGORY = "GFUtils"
 
     @staticmethod
     def hex_to_rgb(hex_color):

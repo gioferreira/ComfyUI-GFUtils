@@ -2,7 +2,7 @@
 from .bezier_node import BezierMapping
 from .hex_to_rgb import HexToRGB
 from .save_text_to_path import SaveTextToPath
-from .was_fork import Molde_Text_Concatenate, Molde_Load_Image_Batch
+from .was_fork import GFTextConcatenate, GFLoadImageBatch
 
 # Import new S3 nodes
 from .s3_nodes.api_load_image import LoadImageS3API
@@ -44,7 +44,7 @@ NODE_DISPLAY_NAME_MAPPINGS.update(
 
 NODE_CLASS_MAPPINGS.update(
     {
-        "TextConcatenate": Molde_Text_Concatenate,
+        "TextConcatenate": GFTextConcatenate,
     }
 )
 NODE_DISPLAY_NAME_MAPPINGS.update(
@@ -55,7 +55,7 @@ NODE_DISPLAY_NAME_MAPPINGS.update(
 
 NODE_CLASS_MAPPINGS.update(
     {
-        "LoadImageBatch": Molde_Load_Image_Batch,
+        "LoadImageBatch": GFLoadImageBatch,
     }
 )
 NODE_DISPLAY_NAME_MAPPINGS.update(
