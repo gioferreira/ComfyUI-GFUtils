@@ -1,6 +1,7 @@
 # Import existing nodes
 from .bezier_node import BezierMapping
 from .hex_to_rgb import HexToRGB
+from .save_text_to_path import SaveTextToPath
 from .was_fork import Molde_Text_Concatenate, Molde_Load_Image_Batch
 
 # Import new S3 nodes
@@ -93,6 +94,9 @@ NODE_DISPLAY_NAME_MAPPINGS.update(
         "ProcessZipImages": "Process Batch Images",
     }
 )
+
+NODE_CLASS_MAPPINGS.update({"SaveTextToPath": SaveTextToPath})
+NODE_DISPLAY_NAME_MAPPINGS.update({"Save Text to Path": "SaveTextToPath"})
 
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
