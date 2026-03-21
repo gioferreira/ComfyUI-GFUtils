@@ -43,7 +43,7 @@ class SaveImageAbsolutePath:
     FUNCTION = "save_images"
     OUTPUT_NODE = True
     OUTPUT_IS_LIST = (True,)
-    CATEGORY = "image/output"
+    CATEGORY = "GFUtils"
 
     def _analyze_path(self, absolute_path):
         if ntpath.isabs(absolute_path):
