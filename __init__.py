@@ -1,6 +1,7 @@
 # Import existing nodes
 from .bezier_node import BezierMapping
 from .hex_to_rgb import HexToRGB
+from .save_image_absolute_path import SaveImageAbsolutePath
 from .save_text_to_path import SaveTextToPath
 from .was_fork import GFTextConcatenate, GFLoadImageBatch
 
@@ -97,6 +98,11 @@ NODE_DISPLAY_NAME_MAPPINGS.update(
 
 NODE_CLASS_MAPPINGS.update({"SaveTextToPath": SaveTextToPath})
 NODE_DISPLAY_NAME_MAPPINGS.update({"Save Text to Path": "SaveTextToPath"})
+
+NODE_CLASS_MAPPINGS.update({"SaveImageAbsolutePath": SaveImageAbsolutePath})
+NODE_DISPLAY_NAME_MAPPINGS.update(
+    {"SaveImageAbsolutePath": "Save Image with Absolute Path"}
+)
 
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
