@@ -9,6 +9,7 @@ It currently includes:
 - S3 image input/output nodes
 - S3 ZIP input/output nodes
 - a batch image processing node for resize, crop, and pad flows
+- FlowMatch scheduler nodes extracted from `ComfyUI-Workarounds` without pulling in that repo's broader dependency set
 
 ## Nodes
 - `BezierMapping`
@@ -22,6 +23,10 @@ It currently includes:
 - `LoadZipS3API`
 - `SaveZipS3API`
 - `ProcessZipImages`
+- `FlowMatchScheduler`
+- `FlowMatchSchedulerPresets`
+- `FlowMatchAutoConfig`
+- `FlowMatchGuide`
 
 ## Installation
 Clone this repository into your ComfyUI `custom_nodes` directory.
@@ -34,7 +39,26 @@ pip install -r requirements.txt
 
 Notes:
 - `boto3` and `python-dotenv` are the only extra runtime dependencies declared here.
-- other imports such as `torch`, `Pillow`, `numpy`, `matplotlib`, and ComfyUI modules are expected to come from the ComfyUI environment itself
+- `torch` is intentionally not pinned here; these nodes are meant to use the version already required by your ComfyUI installation
+- other imports such as `Pillow`, `numpy`, `matplotlib`, and ComfyUI modules are expected to come from the ComfyUI environment itself
+
+## FlowMatch Note
+This repo vendors only the FlowMatch scheduler nodes from `ComfyUI-Workarounds` instead of depending on that full package.
+
+Why:
+- these are the only nodes from that project that we want here
+- the rest of that package is mostly focused on face overlay and landmark tooling
+- its pinned requirements include packages like `opencv-python`, `mediapipe`, `scipy`, `protobuf`, and `torch`, which can conflict with modern ComfyUI installations
+- keeping the FlowMatch nodes local avoids pulling in unrelated nodes and fragile dependency pins
+
+Included FlowMatch nodes:
+- `FlowMatchScheduler`
+- `FlowMatchSchedulerPresets`
+- `FlowMatchAutoConfig`
+- `FlowMatchGuide`
+
+Source:
+- `ComfyUI-Workarounds` by Alisson Anjos (MIT): [github.com/alisson-anjos/ComfyUI-Workarounds](https://github.com/alisson-anjos/ComfyUI-Workarounds)
 
 ## S3 Configuration
 The S3 nodes read credentials from environment variables and call `load_dotenv()`, so a local `.env` file also works.

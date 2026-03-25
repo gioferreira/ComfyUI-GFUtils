@@ -4,6 +4,12 @@ from .hex_to_rgb import HexToRGB
 from .save_image_absolute_path import SaveImageAbsolutePath
 from .save_text_to_path import SaveTextToPath
 from .was_fork import GFTextConcatenate, GFLoadImageBatch
+from .flowmatch_scheduler import (
+    FlowMatchAutoConfig,
+    FlowMatchGuide,
+    FlowMatchScheduler,
+    FlowMatchSchedulerPresets,
+)
 
 # Import new S3 nodes
 from .s3_nodes.api_load_image import LoadImageS3API
@@ -102,6 +108,23 @@ NODE_DISPLAY_NAME_MAPPINGS.update({"Save Text to Path": "SaveTextToPath"})
 NODE_CLASS_MAPPINGS.update({"SaveImageAbsolutePath": SaveImageAbsolutePath})
 NODE_DISPLAY_NAME_MAPPINGS.update(
     {"SaveImageAbsolutePath": "Save Image with Absolute Path"}
+)
+
+NODE_CLASS_MAPPINGS.update(
+    {
+        "FlowMatchScheduler": FlowMatchScheduler,
+        "FlowMatchSchedulerPresets": FlowMatchSchedulerPresets,
+        "FlowMatchAutoConfig": FlowMatchAutoConfig,
+        "FlowMatchGuide": FlowMatchGuide,
+    }
+)
+NODE_DISPLAY_NAME_MAPPINGS.update(
+    {
+        "FlowMatchScheduler": "FlowMatch Scheduler",
+        "FlowMatchSchedulerPresets": "FlowMatch Scheduler Presets",
+        "FlowMatchAutoConfig": "FlowMatch Auto Config",
+        "FlowMatchGuide": "FlowMatch Guide",
+    }
 )
 
 

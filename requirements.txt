@@ -1,2 +1,4 @@
+# Runtime deps for this repo only.
+# Torch intentionally stays unpinned here and should come from the user's ComfyUI installation.
 python-dotenv>=1.0,<2.0
 boto3>=1.34,<2.0
