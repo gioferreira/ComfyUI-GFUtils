@@ -6,6 +6,7 @@ ComfyUI-GFUtils is a small custom-node pack for ComfyUI.
 It currently includes:
 - utility nodes such as text concatenation, hex-to-RGB conversion, bezier mapping, batch image loading, and text saving to an arbitrary path
 - a local image save node that writes directly to an absolute file path
+- a torch-based masked video recombine node with debug outputs for frame-by-frame foreground/background merges
 - S3 image input/output nodes
 - S3 ZIP input/output nodes
 - a batch image processing node for resize, crop, and pad flows
@@ -18,6 +19,7 @@ It currently includes:
 - `LoadImageBatch`
 - `SaveTextToPath`
 - `SaveImageAbsolutePath`
+- `VideoMaskedRecombine`
 - `LoadImageS3API`
 - `SaveImageS3API`
 - `LoadZipS3API`
@@ -83,3 +85,4 @@ S3_SECRET_KEY=your-secret-key
 - `SaveZipS3API` writes a ZIP archive locally, then uploads it to S3.
 - `SaveTextToPath` writes plain text to a path and creates the parent directory when needed.
 - `SaveImageAbsolutePath` writes an image directly to a full absolute file path such as `D:\DevRev\Select_PNG\005_AGENTESTUDIO\Agent_00006_pose.png` on Windows or `/home/user/output/image.png` on macOS/Linux.
+- `VideoMaskedRecombine` merges aligned foreground/background image batches using a mask and also returns `processed_mask`, `foreground_masked`, and `background_masked` debug outputs.
