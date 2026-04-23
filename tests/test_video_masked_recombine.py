@@ -18,7 +18,7 @@ def load_module():
 
 
 class VideoMaskedRecombineTests(unittest.TestCase):
-    def test_execute_composites_foreground_and_background_with_debug_outputs(self):
+    def test_execute_composites_rgb_batches(self):
         module = load_module()
         node = module.VideoMaskedRecombine()
 
@@ -26,7 +26,7 @@ class VideoMaskedRecombineTests(unittest.TestCase):
         background = torch.full((1, 2, 2, 3), 0.2, dtype=torch.float32)
         mask = torch.tensor([[[1.0, 0.0], [0.5, 1.0]]], dtype=torch.float32)
 
-        image, processed_mask, foreground_masked, background_masked = node.execute(
+        (image,) = node.execute(
             foreground=foreground,
             background=background,
             mask=mask,
@@ -36,17 +36,41 @@ class VideoMaskedRecombineTests(unittest.TestCase):
             grow=0,
         )
 
-        expected_mask = mask
-        expected_image = foreground * expected_mask.unsqueeze(-1) + background * (
-            1.0 - expected_mask.unsqueeze(-1)
+        expected_image = foreground * mask.unsqueeze(-1) + background * (
+            1.0 - mask.unsqueeze(-1)
+        )
+        self.assertTrue(torch.allclose(image, expected_image))
+
+    def test_execute_normalizes_rgba_foreground_to_rgb(self):
+        module = load_module()
+        node = module.VideoMaskedRecombine()
+
+        foreground = torch.tensor(
+            [[[[1.0, 0.5, 0.25, 0.0], [0.2, 0.4, 0.6, 1.0]]]],
+            dtype=torch.float32,
+        )
+        background = torch.tensor(
+            [[[[0.1, 0.1, 0.1], [0.3, 0.3, 0.3]]]],
+            dtype=torch.float32,
+        )
+        mask = torch.tensor([[[1.0, 0.0]]], dtype=torch.float32)
+
+        (image,) = node.execute(
+            foreground=foreground,
+            background=background,
+            mask=mask,
+            invert_mask=False,
+            opacity=1.0,
+            feather=0,
+            grow=0,
         )
 
-        self.assertTrue(torch.allclose(processed_mask, expected_mask))
-        self.assertTrue(torch.allclose(image, expected_image))
-        self.assertTrue(torch.allclose(foreground_masked, foreground * expected_mask.unsqueeze(-1)))
-        self.assertTrue(
-            torch.allclose(background_masked, background * (1.0 - expected_mask.unsqueeze(-1)))
+        expected = torch.tensor(
+            [[[[1.0, 0.5, 0.25], [0.3, 0.3, 0.3]]]],
+            dtype=torch.float32,
         )
+        self.assertEqual(image.shape, (1, 1, 2, 3))
+        self.assertTrue(torch.allclose(image, expected))
 
     def test_execute_repeats_single_mask_across_batch(self):
         module = load_module()
@@ -62,7 +86,7 @@ class VideoMaskedRecombineTests(unittest.TestCase):
         background = torch.full((2, 2, 2, 3), 0.25, dtype=torch.float32)
         mask = torch.tensor([[1.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
 
-        image, processed_mask, _, _ = node.execute(
+        (image,) = node.execute(
             foreground=foreground,
             background=background,
             mask=mask,
@@ -72,15 +96,43 @@ class VideoMaskedRecombineTests(unittest.TestCase):
             grow=0,
         )
 
-        self.assertEqual(processed_mask.shape, (2, 2, 2))
-        self.assertTrue(torch.allclose(processed_mask[0], processed_mask[1]))
         self.assertTrue(torch.allclose(image[0, 0, 0], torch.zeros(3)))
         self.assertTrue(torch.allclose(image[0, 0, 1], torch.full((3,), 0.25)))
         self.assertTrue(torch.allclose(image[1, 1, 1], torch.ones(3)))
 
+
+class VideoMaskedRecombineDebugTests(unittest.TestCase):
+    def test_debug_node_returns_processed_mask_and_masked_layers(self):
+        module = load_module()
+        node = module.VideoMaskedRecombineDebug()
+
+        foreground = torch.ones((1, 2, 2, 3), dtype=torch.float32)
+        background = torch.full((1, 2, 2, 3), 0.2, dtype=torch.float32)
+        mask = torch.tensor([[[1.0, 0.0], [0.5, 1.0]]], dtype=torch.float32)
+
+        image, processed_mask, foreground_masked, background_masked = node.execute(
+            foreground=foreground,
+            background=background,
+            mask=mask,
+            invert_mask=False,
+            opacity=1.0,
+            feather=0,
+            grow=0,
+        )
+
+        expected_image = foreground * mask.unsqueeze(-1) + background * (
+            1.0 - mask.unsqueeze(-1)
+        )
+        self.assertTrue(torch.allclose(processed_mask, mask))
+        self.assertTrue(torch.allclose(image, expected_image))
+        self.assertTrue(torch.allclose(foreground_masked, foreground * mask.unsqueeze(-1)))
+        self.assertTrue(
+            torch.allclose(background_masked, background * (1.0 - mask.unsqueeze(-1)))
+        )
+
     def test_grow_expands_mask_area(self):
         module = load_module()
-        node = module.VideoMaskedRecombine()
+        node = module.VideoMaskedRecombineDebug()
 
         mask = torch.zeros((1, 5, 5), dtype=torch.float32)
         mask[0, 2, 2] = 1.0
@@ -92,7 +144,7 @@ class VideoMaskedRecombineTests(unittest.TestCase):
 
     def test_feather_softens_mask_edges(self):
         module = load_module()
-        node = module.VideoMaskedRecombine()
+        node = module.VideoMaskedRecombineDebug()
 
         mask = torch.zeros((1, 5, 5), dtype=torch.float32)
         mask[0, 2, 2] = 1.0

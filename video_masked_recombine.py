@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 
-class VideoMaskedRecombine:
+class _VideoMaskedRecombineCore:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -17,14 +17,6 @@ class VideoMaskedRecombine:
             }
         }
 
-    RETURN_TYPES = ("IMAGE", "MASK", "IMAGE", "IMAGE")
-    RETURN_NAMES = (
-        "image",
-        "processed_mask",
-        "foreground_masked",
-        "background_masked",
-    )
-    FUNCTION = "execute"
     CATEGORY = "GFUtils"
 
     def _ensure_image_batch(self, image, name):
@@ -32,9 +24,21 @@ class VideoMaskedRecombine:
             image = image.unsqueeze(0)
 
         if image.ndim != 4:
-            raise ValueError(f"{name} must be an IMAGE tensor with shape [B,H,W,C] or [H,W,C].")
+            raise ValueError(
+                f"{name} must be an IMAGE tensor with shape [B,H,W,C] or [H,W,C]."
+            )
 
-        return image.to(dtype=torch.float32)
+        image = image.to(dtype=torch.float32)
+        channels = image.shape[-1]
+
+        if channels == 4:
+            image = image[..., :3]
+        elif channels != 3:
+            raise ValueError(
+                f"{name} must have 3 channels (RGB) or 4 channels (RGBA). Got {channels}."
+            )
+
+        return image
 
     def _ensure_mask_batch(self, mask):
         if mask.ndim == 4:
@@ -55,13 +59,13 @@ class VideoMaskedRecombine:
 
         return mask.to(dtype=torch.float32)
 
-    def _repeat_to_batch(self, tensor, target_batch, name):
+    def _expand_to_batch(self, tensor, target_batch, name):
         current_batch = tensor.shape[0]
         if current_batch == target_batch:
             return tensor
 
         if current_batch == 1:
-            return tensor.repeat(target_batch, *([1] * (tensor.ndim - 1)))
+            return tensor.expand(target_batch, *tensor.shape[1:])
 
         raise ValueError(
             f"{name} batch must be 1 or match the largest batch in the node. "
@@ -83,8 +87,7 @@ class VideoMaskedRecombine:
         coords = torch.arange(-radius, radius + 1, device=device, dtype=dtype)
         sigma = max(radius / 2.0, 0.5)
         kernel = torch.exp(-(coords**2) / (2 * sigma * sigma))
-        kernel = kernel / kernel.sum()
-        return kernel
+        return kernel / kernel.sum()
 
     def _gaussian_blur(self, mask, radius):
         if radius <= 0:
@@ -127,7 +130,25 @@ class VideoMaskedRecombine:
 
         return torch.clamp(mask, 0.0, 1.0)
 
-    def execute(
+    def _prepare_inputs(self, foreground, background, mask):
+        foreground = self._ensure_image_batch(foreground, "foreground")
+        background = self._ensure_image_batch(background, "background")
+        mask = self._ensure_mask_batch(mask)
+
+        target_batch = max(foreground.shape[0], background.shape[0], mask.shape[0])
+        foreground = self._expand_to_batch(foreground, target_batch, "foreground")
+        background = self._expand_to_batch(background, target_batch, "background")
+        mask = self._expand_to_batch(mask, target_batch, "mask")
+
+        if foreground.shape[1:3] != background.shape[1:3]:
+            raise ValueError(
+                "foreground and background must have the same height and width after batch matching. "
+                f"Got foreground={tuple(foreground.shape)} vs background={tuple(background.shape)}."
+            )
+
+        return foreground, background, mask
+
+    def _composite(
         self,
         foreground,
         background,
@@ -136,21 +157,9 @@ class VideoMaskedRecombine:
         opacity=1.0,
         feather=0,
         grow=0,
+        include_debug=False,
     ):
-        foreground = self._ensure_image_batch(foreground, "foreground")
-        background = self._ensure_image_batch(background, "background")
-        mask = self._ensure_mask_batch(mask)
-
-        target_batch = max(foreground.shape[0], background.shape[0], mask.shape[0])
-        foreground = self._repeat_to_batch(foreground, target_batch, "foreground")
-        background = self._repeat_to_batch(background, target_batch, "background")
-        mask = self._repeat_to_batch(mask, target_batch, "mask")
-
-        if foreground.shape[1:] != background.shape[1:]:
-            raise ValueError(
-                "foreground and background must have the same shape after batch matching. "
-                f"Got {tuple(foreground.shape)} vs {tuple(background.shape)}."
-            )
+        foreground, background, mask = self._prepare_inputs(foreground, background, mask)
 
         height, width = foreground.shape[1], foreground.shape[2]
         mask = self._resize_mask(mask, height, width)
@@ -161,9 +170,74 @@ class VideoMaskedRecombine:
 
         processed_mask = torch.clamp(processed_mask * opacity, 0.0, 1.0)
         mask_image = processed_mask.unsqueeze(-1)
+        image = torch.clamp(
+            foreground * mask_image + background * (1.0 - mask_image),
+            0.0,
+            1.0,
+        )
+
+        if not include_debug:
+            return (image,)
 
         foreground_masked = foreground * mask_image
         background_masked = background * (1.0 - mask_image)
-        image = torch.clamp(foreground_masked + background_masked, 0.0, 1.0)
-
         return (image, processed_mask, foreground_masked, background_masked)
+
+
+class VideoMaskedRecombine(_VideoMaskedRecombineCore):
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    FUNCTION = "execute"
+
+    def execute(
+        self,
+        foreground,
+        background,
+        mask,
+        invert_mask=False,
+        opacity=1.0,
+        feather=0,
+        grow=0,
+    ):
+        return self._composite(
+            foreground=foreground,
+            background=background,
+            mask=mask,
+            invert_mask=invert_mask,
+            opacity=opacity,
+            feather=feather,
+            grow=grow,
+            include_debug=False,
+        )
+
+
+class VideoMaskedRecombineDebug(_VideoMaskedRecombineCore):
+    RETURN_TYPES = ("IMAGE", "MASK", "IMAGE", "IMAGE")
+    RETURN_NAMES = (
+        "image",
+        "processed_mask",
+        "foreground_masked",
+        "background_masked",
+    )
+    FUNCTION = "execute"
+
+    def execute(
+        self,
+        foreground,
+        background,
+        mask,
+        invert_mask=False,
+        opacity=1.0,
+        feather=0,
+        grow=0,
+    ):
+        return self._composite(
+            foreground=foreground,
+            background=background,
+            mask=mask,
+            invert_mask=invert_mask,
+            opacity=opacity,
+            feather=feather,
+            grow=grow,
+            include_debug=True,
+        )

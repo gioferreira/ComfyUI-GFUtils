@@ -3,7 +3,7 @@ from .bezier_node import BezierMapping
 from .hex_to_rgb import HexToRGB
 from .save_image_absolute_path import SaveImageAbsolutePath
 from .save_text_to_path import SaveTextToPath
-from .video_masked_recombine import VideoMaskedRecombine
+from .video_masked_recombine import VideoMaskedRecombine, VideoMaskedRecombineDebug
 from .was_fork import GFTextConcatenate, GFLoadImageBatch
 from .flowmatch_scheduler import (
     FlowMatchAutoConfig,
@@ -114,6 +114,11 @@ NODE_DISPLAY_NAME_MAPPINGS.update(
 NODE_CLASS_MAPPINGS.update({"VideoMaskedRecombine": VideoMaskedRecombine})
 NODE_DISPLAY_NAME_MAPPINGS.update(
     {"Video Masked Recombine": "VideoMaskedRecombine"}
+)
+
+NODE_CLASS_MAPPINGS.update({"VideoMaskedRecombineDebug": VideoMaskedRecombineDebug})
+NODE_DISPLAY_NAME_MAPPINGS.update(
+    {"Video Masked Recombine Debug": "VideoMaskedRecombineDebug"}
 )
 
 NODE_CLASS_MAPPINGS.update(
