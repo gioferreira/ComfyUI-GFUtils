@@ -8,6 +8,7 @@ It currently includes:
 - a local image save node that writes directly to an absolute file path
 - a torch-based masked video recombine node for frame-by-frame foreground/background merges
 - a separate debug variant for inspecting processed masks and masked layers without baking that cost into the main node
+- a frontend cleanup tool for selecting and deleting muted nodes
 - S3 image input/output nodes
 - S3 ZIP input/output nodes
 - a batch image processing node for resize, crop, and pad flows
@@ -31,6 +32,34 @@ It currently includes:
 - `FlowMatchSchedulerPresets`
 - `FlowMatchAutoConfig`
 - `FlowMatchGuide`
+
+## Clean Muted Nodes
+This package includes a small frontend-only ComfyUI extension that adds cleanup actions for muted nodes.
+
+Features:
+- Select all muted nodes
+- Delete selected muted nodes
+- Delete all muted nodes
+
+Usage:
+Right-click the canvas/background and use:
+- Select all muted nodes
+- Delete selected muted nodes...
+- Delete all muted nodes...
+
+Safety:
+- Only nodes with `mode === 2` are affected.
+- Bypassed nodes with `mode === 4` are preserved.
+- Subgraph internals are not traversed; the extension only operates on the main visible graph.
+- Destructive actions always ask for confirmation first.
+
+Undo:
+- Deletion uses LiteGraph's `graph.remove(node)`. Undo behavior depends on the ComfyUI frontend version in use, so save or duplicate important workflows before large cleanups.
+
+Tested with:
+- Automated core tests: Node.js v23.11.0
+- Repository test suite: Python `unittest`
+- ComfyUI frontend/browser: not manually verified in this workspace
 
 ## Installation
 Clone this repository into your ComfyUI `custom_nodes` directory.
@@ -89,3 +118,4 @@ S3_SECRET_KEY=your-secret-key
 - `SaveImageAbsolutePath` writes an image directly to a full absolute file path such as `D:\DevRev\Select_PNG\005_AGENTESTUDIO\Agent_00006_pose.png` on Windows or `/home/user/output/image.png` on macOS/Linux.
 - `VideoMaskedRecombine` normalizes RGB/RGBA inputs to RGB, resizes the mask if needed, and returns a single merged image batch.
 - `VideoMaskedRecombineDebug` runs the same recombine path but also returns `processed_mask`, `foreground_masked`, and `background_masked` for inspection.
+- `Clean Muted Nodes` is frontend-only and registers as `giovani.cleanMutedNodes`.
