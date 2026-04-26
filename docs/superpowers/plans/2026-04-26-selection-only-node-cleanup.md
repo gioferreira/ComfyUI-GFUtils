@@ -34,7 +34,7 @@ Expected: tests pass after implementation.
 - Modify: `js/node_selection_cleanup_core.mjs`
 - Modify: `tests/node_selection_cleanup_core.test.mjs`
 
-- [ ] Write failing tests for active output traversal, disconnected islands, cycles, and no eligible output behavior.
+- [ ] Write failing tests for output traversal, disconnected islands, cycles, and no-output behavior.
 - [ ] Add isolated helpers for output node detection, node mode classification, incoming link resolution, and reverse traversal.
 - [ ] Add `getUnusedNodes(outputScope)` and `selectUnusedNodes(outputScope)`.
 - [ ] Keep traversal defensive when graph data is incomplete.

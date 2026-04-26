@@ -2,10 +2,16 @@ export const MUTED_MODE = 2;
 export const BYPASSED_MODE = 4;
 
 export const OUTPUT_SCOPE = Object.freeze({
+  NO_OUTPUTS: "no-outputs",
+  NO_OUTPUTS_OR_MUTED_OUTPUTS: "no-outputs-or-muted-outputs",
+  NO_OUTPUTS_OR_BYPASSED_OUTPUTS: "no-outputs-or-bypassed-outputs",
+  NO_OUTPUTS_OR_INACTIVE_OUTPUTS: "no-outputs-or-inactive-outputs",
+});
+
+const OUTPUT_MODE = Object.freeze({
   ACTIVE: "active",
-  ACTIVE_AND_MUTED: "active-muted",
-  ACTIVE_AND_BYPASSED: "active-bypassed",
-  ALL: "all",
+  MUTED: "muted",
+  BYPASSED: "bypassed",
 });
 
 export function isMutedNode(node) {
@@ -14,10 +20,6 @@ export function isMutedNode(node) {
 
 function isBypassedNode(node) {
   return Boolean(node && node.mode === BYPASSED_MODE);
-}
-
-function isActiveNode(node) {
-  return Boolean(node) && !isMutedNode(node) && !isBypassedNode(node);
 }
 
 function hasOutputFlag(value) {
@@ -42,20 +44,29 @@ export function isOutputNode(node) {
   return candidates.some(hasOutputFlag);
 }
 
-function isOutputNodeInScope(node, scope) {
-  if (!isOutputNode(node)) return false;
+function getOutputMode(node) {
+  if (isMutedNode(node)) return OUTPUT_MODE.MUTED;
+  if (isBypassedNode(node)) return OUTPUT_MODE.BYPASSED;
+  return OUTPUT_MODE.ACTIVE;
+}
 
+function getCleanupOutputModes(scope) {
   switch (scope) {
-    case OUTPUT_SCOPE.ACTIVE_AND_MUTED:
-      return isActiveNode(node) || isMutedNode(node);
-    case OUTPUT_SCOPE.ACTIVE_AND_BYPASSED:
-      return isActiveNode(node) || isBypassedNode(node);
-    case OUTPUT_SCOPE.ALL:
-      return isActiveNode(node) || isMutedNode(node) || isBypassedNode(node);
-    case OUTPUT_SCOPE.ACTIVE:
+    case OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS:
+      return new Set([OUTPUT_MODE.MUTED]);
+    case OUTPUT_SCOPE.NO_OUTPUTS_OR_BYPASSED_OUTPUTS:
+      return new Set([OUTPUT_MODE.BYPASSED]);
+    case OUTPUT_SCOPE.NO_OUTPUTS_OR_INACTIVE_OUTPUTS:
+      return new Set([OUTPUT_MODE.MUTED, OUTPUT_MODE.BYPASSED]);
+    case OUTPUT_SCOPE.NO_OUTPUTS:
     default:
-      return isActiveNode(node);
+      return new Set();
   }
+}
+
+function shouldSelectNodeForCleanup(outputModes, cleanupOutputModes) {
+  if (!outputModes || outputModes.size === 0) return true;
+  return [...outputModes].every((mode) => cleanupOutputModes.has(mode));
 }
 
 function formatCount(count, noun) {
@@ -110,27 +121,35 @@ function getInputOriginNodeIds(node, graph) {
   return originIds;
 }
 
-function getReachableNodesFromOutputs(graph, outputNodes) {
+function getReachableOutputModesByNode(graph, outputNodes) {
   const allNodes = getCurrentGraphNodes(graph);
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
-  const reachable = new Set();
-  const pending = [...outputNodes];
+  const outputModesByNode = new Map(allNodes.map((node) => [node.id, new Set()]));
 
-  while (pending.length > 0) {
-    const node = pending.pop();
-    if (!node || reachable.has(node.id)) continue;
+  for (const outputNode of outputNodes) {
+    if (!nodesById.has(outputNode?.id)) continue;
 
-    reachable.add(node.id);
+    const outputMode = getOutputMode(outputNode);
+    const visited = new Set();
+    const pending = [outputNode];
 
-    for (const originId of getInputOriginNodeIds(node, graph)) {
-      const originNode = nodesById.get(originId);
-      if (originNode && !reachable.has(originNode.id)) {
-        pending.push(originNode);
+    while (pending.length > 0) {
+      const node = pending.pop();
+      if (!node || visited.has(node.id)) continue;
+
+      visited.add(node.id);
+      outputModesByNode.get(node.id)?.add(outputMode);
+
+      for (const originId of getInputOriginNodeIds(node, graph)) {
+        const originNode = nodesById.get(originId);
+        if (originNode && !visited.has(originNode.id)) {
+          pending.push(originNode);
+        }
       }
     }
   }
 
-  return reachable;
+  return outputModesByNode;
 }
 
 function isCurrentGraphNode(node, graph) {
@@ -207,27 +226,27 @@ export function createNodeSelectionCleanupController({ app, notify = defaultNoti
     return mutedNodes.length;
   }
 
-  function getOutputNodes(scope = OUTPUT_SCOPE.ACTIVE) {
-    return getAllNodes().filter((node) => isOutputNodeInScope(node, scope));
+  function getOutputNodes(scope = OUTPUT_SCOPE.NO_OUTPUTS) {
+    const cleanupOutputModes = getCleanupOutputModes(scope);
+    return getAllNodes().filter((node) => {
+      if (!isOutputNode(node)) return false;
+      return getOutputMode(node) === OUTPUT_MODE.ACTIVE || cleanupOutputModes.has(getOutputMode(node));
+    });
   }
 
-  function getUnusedNodes(scope = OUTPUT_SCOPE.ACTIVE) {
+  function getUnusedNodes(scope = OUTPUT_SCOPE.NO_OUTPUTS) {
     const graph = app?.graph;
-    const outputNodes = getOutputNodes(scope);
-    if (outputNodes.length === 0) return [];
+    const allNodes = getAllNodes();
+    const outputNodes = allNodes.filter(isOutputNode);
+    const outputModesByNode = getReachableOutputModesByNode(graph, outputNodes);
+    const cleanupOutputModes = getCleanupOutputModes(scope);
 
-    const reachable = getReachableNodesFromOutputs(graph, outputNodes);
-    return getAllNodes().filter((node) => !reachable.has(node.id));
+    return allNodes.filter((node) =>
+      shouldSelectNodeForCleanup(outputModesByNode.get(node.id), cleanupOutputModes),
+    );
   }
 
-  function selectUnusedNodes(scope = OUTPUT_SCOPE.ACTIVE) {
-    const outputNodes = getOutputNodes(scope);
-    if (outputNodes.length === 0) {
-      clearSelection();
-      notify("No eligible output nodes found.");
-      return 0;
-    }
-
+  function selectUnusedNodes(scope = OUTPUT_SCOPE.NO_OUTPUTS) {
     const unusedNodes = getUnusedNodes(scope);
     if (unusedNodes.length === 0) {
       clearSelection();

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Replace destructive cleanup actions with selection-only helpers, and add selection for nodes that do not contribute to eligible output nodes.
+Replace destructive cleanup actions with selection-only helpers, and add selection for nodes that do not contribute to active output paths.
 
 ## Context
 
@@ -15,14 +15,14 @@ Deletion is riskier than necessary for graph cleanup. Selecting candidate nodes 
 The extension should expose selection-only menu actions:
 
 - Select muted nodes.
-- Select unused nodes from active outputs.
-- Select unused nodes from active + muted outputs.
-- Select unused nodes from active + bypassed outputs.
-- Select unused nodes from all outputs.
+- Select nodes with no outputs.
+- Select nodes with no outputs or only muted outputs.
+- Select nodes with no outputs or only bypassed outputs.
+- Select nodes with no outputs or only inactive outputs.
 
-Unused means "not reachable by walking backward from eligible output nodes through input links." A node is useful if it is an eligible output node or an upstream dependency of one. Any main-graph node outside that reachable set is unused for that chosen output scope.
+Unused means "not contributing to a protected output path." The extension walks backward from every output node and records which output modes each node can reach. Nodes that reach no outputs are selected by every unused-node mode. Nodes that only reach muted or bypassed outputs are selected only when the chosen mode includes that output state. Nodes that reach at least one active output are always preserved.
 
-If no eligible output nodes exist for the chosen scope, the extension should select nothing and notify the user. This avoids selecting the whole workflow by accident.
+If no output nodes exist in the visible graph, every visible node is selected. This matches the cleanup intent after a user deletes the final Save/Preview node from a branch.
 
 ## Output Scope
 
@@ -34,10 +34,10 @@ LiteGraph modes used by this feature:
 
 Output scopes:
 
-- `active`: include only active output nodes.
-- `active-muted`: include active and muted output nodes.
-- `active-bypassed`: include active and bypassed output nodes.
-- `all`: include active, muted, and bypassed output nodes.
+- `no-outputs`: select only nodes that reach no output.
+- `no-outputs-or-muted-outputs`: also select nodes whose reachable outputs are all muted.
+- `no-outputs-or-bypassed-outputs`: also select nodes whose reachable outputs are all bypassed.
+- `no-outputs-or-inactive-outputs`: also select nodes whose reachable outputs are all muted or bypassed.
 
 Output node detection should use ComfyUI/LiteGraph metadata available on frontend nodes, favoring:
 
@@ -72,7 +72,7 @@ Automated tests should cover:
 - Active output reachability selects disconnected islands.
 - Muted and bypassed output scopes alter which nodes are preserved.
 - Cycles disconnected from outputs are selected as unused.
-- Missing eligible outputs produces no selection and a notification.
+- Missing output nodes selects the visible graph.
 - Link formats supported by LiteGraph-like objects are handled.
 
 Manual/browser verification is still recommended in a real ComfyUI frontend because output metadata can vary by ComfyUI version and custom node definitions.

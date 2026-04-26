@@ -52,20 +52,20 @@ app.registerExtension({
         callback: () => controller.selectAllMutedNodes(),
       });
       options.push({
-        content: "Select unused nodes from active outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE),
+        content: "Select nodes with no outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS),
       });
       options.push({
-        content: "Select unused nodes from active + muted outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE_AND_MUTED),
+        content: "Select nodes with no outputs or only muted outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS),
       });
       options.push({
-        content: "Select unused nodes from active + bypassed outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE_AND_BYPASSED),
+        content: "Select nodes with no outputs or only bypassed outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_BYPASSED_OUTPUTS),
       });
       options.push({
-        content: "Select unused nodes from all outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ALL),
+        content: "Select nodes with no outputs or only inactive outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_INACTIVE_OUTPUTS),
       });
 
       return options;

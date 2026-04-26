@@ -38,31 +38,32 @@ This package includes a small frontend-only ComfyUI extension that adds selectio
 
 Features:
 - Select muted nodes
-- Select unused nodes from active outputs
-- Select unused nodes from active + muted outputs
-- Select unused nodes from active + bypassed outputs
-- Select unused nodes from all outputs
+- Select nodes with no outputs
+- Select nodes with no outputs or only muted outputs
+- Select nodes with no outputs or only bypassed outputs
+- Select nodes with no outputs or only inactive outputs
 
 Usage:
 Right-click the canvas/background and use:
 - Select muted nodes
-- Select unused nodes from active outputs
-- Select unused nodes from active + muted outputs
-- Select unused nodes from active + bypassed outputs
-- Select unused nodes from all outputs
+- Select nodes with no outputs
+- Select nodes with no outputs or only muted outputs
+- Select nodes with no outputs or only bypassed outputs
+- Select nodes with no outputs or only inactive outputs
 
 Unused node detection:
-- The extension starts from eligible output nodes and walks backward through input links.
-- Nodes reached by that reverse traversal are treated as useful.
-- Nodes not reached are selected as unused candidates.
-- Disconnected cycles and isolated node chains are selected when they do not feed an eligible output.
-- If no eligible output exists for the chosen mode, nothing is selected.
+- The extension walks backward from every output node through input links.
+- Nodes that do not feed any output are selected by every unused-node mode.
+- Nodes that only feed muted outputs are selected when the mode includes muted outputs.
+- Nodes that only feed bypassed outputs are selected when the mode includes bypassed outputs.
+- Nodes that feed at least one active output are preserved.
+- If the workflow has no output nodes, the whole visible graph is selected.
 
 Output modes:
-- Active outputs ignores muted (`mode === 2`) and bypassed (`mode === 4`) output nodes.
-- Active + muted outputs also preserves branches feeding muted output nodes.
-- Active + bypassed outputs also preserves branches feeding bypassed output nodes.
-- All outputs preserves branches feeding active, muted, and bypassed output nodes.
+- No outputs selects only nodes that do not reach any output.
+- No outputs or only muted outputs also selects branches whose reachable outputs are all muted (`mode === 2`).
+- No outputs or only bypassed outputs also selects branches whose reachable outputs are all bypassed (`mode === 4`).
+- No outputs or only inactive outputs also selects branches whose reachable outputs are all muted or bypassed.
 
 Safety:
 - The extension only selects nodes; it does not delete anything directly.

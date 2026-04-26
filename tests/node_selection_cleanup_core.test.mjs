@@ -121,7 +121,7 @@ test("selectAllMutedNodes selects exactly muted nodes and clears existing select
   assert.deepEqual(notices, ["Selected 2 muted nodes."]);
 });
 
-test("selectUnusedNodes selects nodes unreachable from active outputs", () => {
+test("selectUnusedNodes selects nodes that do not reach any output", () => {
   const source = createNode(1);
   const processor = createNode(2);
   const output = createNode(3, 0, { output_node: true });
@@ -137,14 +137,14 @@ test("selectUnusedNodes selects nodes unreachable from active outputs", () => {
     links,
   );
 
-  const count = controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE);
+  const count = controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS);
 
   assert.equal(count, 2);
   assert.deepEqual(selectedIds(app), [4, 5]);
   assert.deepEqual(notices, ["Selected 2 unused nodes."]);
 });
 
-test("selectUnusedNodes handles disconnected cycles without selecting useful nodes", () => {
+test("selectUnusedNodes handles disconnected cycles without selecting output branches", () => {
   const source = createNode(1);
   const output = createNode(2, 0, { output_node: true });
   const cycleA = createNode(3);
@@ -152,13 +152,13 @@ test("selectUnusedNodes handles disconnected cycles without selecting useful nod
   const links = [link(10, source, output), link(11, cycleA, cycleB), link(12, cycleB, cycleA)];
   const { app, controller } = createHarness([source, output, cycleA, cycleB], links);
 
-  const count = controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE);
+  const count = controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS);
 
   assert.equal(count, 2);
   assert.deepEqual(selectedIds(app), [3, 4]);
 });
 
-test("muted and bypassed output scopes control which output branches are preserved", () => {
+test("muted and bypassed output scopes control which output branches are selected", () => {
   const activeSource = createNode(1);
   const activeOutput = createNode(2, 0, { output_node: true });
   const mutedSource = createNode(3);
@@ -176,8 +176,8 @@ test("muted and bypassed output scopes control which output branches are preserv
       [activeSource, activeOutput, mutedSource, mutedOutput, bypassedSource, bypassedOutput],
       links,
     );
-    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 4);
-    assert.deepEqual(selectedIds(app), [3, 4, 5, 6]);
+    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 0);
+    assert.deepEqual(selectedIds(app), []);
   }
 
   {
@@ -185,7 +185,16 @@ test("muted and bypassed output scopes control which output branches are preserv
       [activeSource, activeOutput, mutedSource, mutedOutput, bypassedSource, bypassedOutput],
       links,
     );
-    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE_AND_MUTED), 2);
+    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS), 2);
+    assert.deepEqual(selectedIds(app), [3, 4]);
+  }
+
+  {
+    const { app, controller } = createHarness(
+      [activeSource, activeOutput, mutedSource, mutedOutput, bypassedSource, bypassedOutput],
+      links,
+    );
+    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_BYPASSED_OUTPUTS), 2);
     assert.deepEqual(selectedIds(app), [5, 6]);
   }
 
@@ -194,21 +203,21 @@ test("muted and bypassed output scopes control which output branches are preserv
       [activeSource, activeOutput, mutedSource, mutedOutput, bypassedSource, bypassedOutput],
       links,
     );
-    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ALL), 0);
-    assert.deepEqual(selectedIds(app), []);
+    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_INACTIVE_OUTPUTS), 4);
+    assert.deepEqual(selectedIds(app), [3, 4, 5, 6]);
   }
 });
 
-test("selectUnusedNodes does not select the whole workflow when no eligible outputs exist", () => {
+test("selectUnusedNodes selects the whole workflow when there are no outputs", () => {
   const source = createNode(1);
   const processor = createNode(2);
   const { app, controller, notices } = createHarness([source, processor]);
 
-  const count = controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE);
+  const count = controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS);
 
-  assert.equal(count, 0);
-  assert.deepEqual(selectedIds(app), []);
-  assert.deepEqual(notices, ["No eligible output nodes found."]);
+  assert.equal(count, 2);
+  assert.deepEqual(selectedIds(app), [1, 2]);
+  assert.deepEqual(notices, ["Selected 2 unused nodes."]);
 });
 
 test("selectUnusedNodes recomputes graph reachability after nodes are deleted", () => {
@@ -218,14 +227,14 @@ test("selectUnusedNodes recomputes graph reachability after nodes are deleted", 
   const links = [link(10, source, processor), link(11, processor, output)];
   const { app, controller } = createHarness([source, processor, output], links);
 
-  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 0);
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 0);
   assert.deepEqual(selectedIds(app), []);
 
   app.graph._nodes = app.graph._nodes.filter((node) => node !== processor);
   output.inputs = [];
   app.graph.links = {};
 
-  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 1);
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 1);
   assert.deepEqual(selectedIds(app), [1]);
 });
 
@@ -237,6 +246,26 @@ test("selectUnusedNodes ignores nodes that no longer belong to the current graph
   const { app, controller } = createHarness([source, deletedProcessor, output], links);
   deletedProcessor.graph = null;
 
-  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 1);
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 1);
   assert.deepEqual(selectedIds(app), [1]);
+});
+
+test("active output branches protect shared upstream nodes from muted output cleanup", () => {
+  const sharedDecode = createNode(1);
+  const activeOutput = createNode(2, 0, { output_node: true });
+  const mutedOutput = createNode(3, MUTED_MODE, { output_node: true });
+  const mutedOnlySource = createNode(4);
+  const mutedOnlyOutput = createNode(5, MUTED_MODE, { output_node: true });
+  const links = [
+    link(10, sharedDecode, activeOutput),
+    link(11, sharedDecode, mutedOutput),
+    link(12, mutedOnlySource, mutedOnlyOutput),
+  ];
+  const { app, controller } = createHarness(
+    [sharedDecode, activeOutput, mutedOutput, mutedOnlySource, mutedOnlyOutput],
+    links,
+  );
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS), 3);
+  assert.deepEqual(selectedIds(app), [3, 4, 5]);
 });
