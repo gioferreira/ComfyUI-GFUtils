@@ -32,14 +32,20 @@ function link(id, originNode, targetNode) {
 function createHarness(nodes, links = []) {
   const dirtyCalls = [];
   const notices = [];
-  const app = {
-    graph: {
-      _nodes: [...nodes],
-      links: Object.fromEntries(links.map((candidate) => [candidate.id, candidate])),
-      setDirtyCanvas(foreground, background) {
-        dirtyCalls.push(["graph", foreground, background]);
-      },
+  const graph = {
+    _nodes: [...nodes],
+    links: Object.fromEntries(links.map((candidate) => [candidate.id, candidate])),
+    setDirtyCanvas(foreground, background) {
+      dirtyCalls.push(["graph", foreground, background]);
     },
+  };
+
+  for (const node of nodes) {
+    if (node.graph !== null) node.graph = graph;
+  }
+
+  const app = {
+    graph,
     canvas: {
       selected_nodes: {},
       setDirty(foreground, background) {
@@ -203,4 +209,34 @@ test("selectUnusedNodes does not select the whole workflow when no eligible outp
   assert.equal(count, 0);
   assert.deepEqual(selectedIds(app), []);
   assert.deepEqual(notices, ["No eligible output nodes found."]);
+});
+
+test("selectUnusedNodes recomputes graph reachability after nodes are deleted", () => {
+  const source = createNode(1);
+  const processor = createNode(2);
+  const output = createNode(3, 0, { output_node: true });
+  const links = [link(10, source, processor), link(11, processor, output)];
+  const { app, controller } = createHarness([source, processor, output], links);
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 0);
+  assert.deepEqual(selectedIds(app), []);
+
+  app.graph._nodes = app.graph._nodes.filter((node) => node !== processor);
+  output.inputs = [];
+  app.graph.links = {};
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 1);
+  assert.deepEqual(selectedIds(app), [1]);
+});
+
+test("selectUnusedNodes ignores nodes that no longer belong to the current graph", () => {
+  const source = createNode(1);
+  const deletedProcessor = createNode(2);
+  const output = createNode(3, 0, { output_node: true });
+  const links = [link(10, source, deletedProcessor), link(11, deletedProcessor, output)];
+  const { app, controller } = createHarness([source, deletedProcessor, output], links);
+  deletedProcessor.graph = null;
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE), 1);
+  assert.deepEqual(selectedIds(app), [1]);
 });

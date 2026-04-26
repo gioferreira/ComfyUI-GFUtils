@@ -111,7 +111,7 @@ function getInputOriginNodeIds(node, graph) {
 }
 
 function getReachableNodesFromOutputs(graph, outputNodes) {
-  const allNodes = graph?._nodes ?? [];
+  const allNodes = getCurrentGraphNodes(graph);
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
   const reachable = new Set();
   const pending = [...outputNodes];
@@ -133,9 +133,17 @@ function getReachableNodesFromOutputs(graph, outputNodes) {
   return reachable;
 }
 
+function isCurrentGraphNode(node, graph) {
+  return Boolean(node) && (node.graph === undefined || node.graph === graph);
+}
+
+function getCurrentGraphNodes(graph) {
+  return (graph?._nodes ?? []).filter((node) => isCurrentGraphNode(node, graph));
+}
+
 export function createNodeSelectionCleanupController({ app, notify = defaultNotify } = {}) {
   function getAllNodes() {
-    return app?.graph?._nodes ?? [];
+    return getCurrentGraphNodes(app?.graph);
   }
 
   function getMutedNodes() {
