@@ -29,6 +29,22 @@ function link(id, originNode, targetNode) {
   };
 }
 
+function kjSetNode(id, name, options = {}) {
+  return createNode(id, 0, {
+    type: "SetNode",
+    widgets: [{ value: name }],
+    ...options,
+  });
+}
+
+function kjGetNode(id, name, options = {}) {
+  return createNode(id, 0, {
+    type: "GetNode",
+    widgets: [{ value: name }],
+    ...options,
+  });
+}
+
 function createHarness(nodes, links = []) {
   const dirtyCalls = [];
   const notices = [];
@@ -268,4 +284,78 @@ test("active output branches protect shared upstream nodes from muted output cle
 
   assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS), 3);
   assert.deepEqual(selectedIds(app), [3, 4, 5]);
+});
+
+test("KJNodes Set/Get virtual links preserve source branches that feed active outputs", () => {
+  const source = createNode(1);
+  const setNode = kjSetNode(2, "foo");
+  const getNode = kjGetNode(3, "foo");
+  const output = createNode(4, 0, { output_node: true });
+  const links = [link(10, source, setNode), link(11, getNode, output)];
+  const { app, controller } = createHarness([source, setNode, getNode, output], links);
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 0);
+  assert.deepEqual(selectedIds(app), []);
+});
+
+test("KJNodes Set branches without an output-reaching Get remain unused", () => {
+  const activeSource = createNode(1);
+  const output = createNode(2, 0, { output_node: true });
+  const setSource = createNode(3);
+  const setNode = kjSetNode(4, "foo");
+  const links = [link(10, activeSource, output), link(11, setSource, setNode)];
+  const { app, controller } = createHarness([activeSource, output, setSource, setNode], links);
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 2);
+  assert.deepEqual(selectedIds(app), [3, 4]);
+});
+
+test("KJNodes Get without a matching Set does not preserve unrelated Set branches", () => {
+  const setSource = createNode(1);
+  const setNode = kjSetNode(2, "bar");
+  const getNode = kjGetNode(3, "foo");
+  const output = createNode(4, 0, { output_node: true });
+  const links = [link(10, setSource, setNode), link(11, getNode, output)];
+  const { app, controller } = createHarness([setSource, setNode, getNode, output], links);
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 2);
+  assert.deepEqual(selectedIds(app), [1, 2]);
+});
+
+test("KJNodes Set/Get virtual links follow output mode cleanup semantics", () => {
+  const source = createNode(1);
+  const setNode = kjSetNode(2, "foo");
+  const getNode = kjGetNode(3, "foo");
+  const mutedOutput = createNode(4, MUTED_MODE, { output_node: true });
+  const links = [link(10, source, setNode), link(11, getNode, mutedOutput)];
+
+  {
+    const { app, controller } = createHarness([source, setNode, getNode, mutedOutput], links);
+    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 0);
+    assert.deepEqual(selectedIds(app), []);
+  }
+
+  {
+    const { app, controller } = createHarness([source, setNode, getNode, mutedOutput], links);
+    assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS), 4);
+    assert.deepEqual(selectedIds(app), [1, 2, 3, 4]);
+  }
+});
+
+test("KJNodes duplicate Set names are treated conservatively", () => {
+  const sourceA = createNode(1);
+  const setA = kjSetNode(2, "foo");
+  const sourceB = createNode(3);
+  const setB = kjSetNode(4, "foo");
+  const getNode = kjGetNode(5, "foo");
+  const output = createNode(6, 0, { output_node: true });
+  const links = [
+    link(10, sourceA, setA),
+    link(11, sourceB, setB),
+    link(12, getNode, output),
+  ];
+  const { app, controller } = createHarness([sourceA, setA, sourceB, setB, getNode, output], links);
+
+  assert.equal(controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS), 4);
+  assert.deepEqual(selectedIds(app), [1, 2, 3, 4]);
 });

@@ -53,6 +53,7 @@ Right-click the canvas/background and use:
 
 Unused node detection:
 - The extension walks backward from every output node through input links.
+- KJNodes `SetNode`/`GetNode` pairs are also followed by matching the first widget value as a same-graph virtual link when exactly one matching `SetNode` exists.
 - Nodes that do not feed any output are selected by every unused-node mode.
 - Nodes that only feed muted outputs are selected when the mode includes muted outputs.
 - Nodes that only feed bypassed outputs are selected when the mode includes bypassed outputs.
@@ -70,6 +71,7 @@ Safety:
 - Muted selection only selects nodes with `mode === 2`.
 - Subgraph internals are not traversed; the extension only operates on the main visible graph.
 - Unused-node selection depends on output metadata exposed by the ComfyUI frontend and LiteGraph links.
+- Duplicate KJNodes `SetNode` names are not traversed virtually, which avoids preserving an ambiguous branch by mistake.
 
 Undo:
 - Use the normal ComfyUI/LiteGraph selection and deletion behavior after reviewing selected nodes.

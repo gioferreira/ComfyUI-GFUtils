@@ -121,10 +121,62 @@ function getInputOriginNodeIds(node, graph) {
   return originIds;
 }
 
+function getKJSetGetName(node) {
+  const value = node?.widgets?.[0]?.value;
+  if (value == null) return undefined;
+
+  const name = String(value);
+  return name === "" ? undefined : name;
+}
+
+function createKJNodesSetGetTraversalAdapter(nodes) {
+  const setNodesByName = new Map();
+
+  for (const node of nodes) {
+    if (node?.type !== "SetNode") continue;
+
+    const name = getKJSetGetName(node);
+    if (!name) continue;
+
+    const setNodes = setNodesByName.get(name) ?? [];
+    setNodes.push(node);
+    setNodesByName.set(name, setNodes);
+  }
+
+  return {
+    getVirtualOriginNodeIds(node) {
+      if (node?.type !== "GetNode") return [];
+
+      const name = getKJSetGetName(node);
+      if (!name) return [];
+
+      const setNodes = setNodesByName.get(name) ?? [];
+      if (setNodes.length !== 1) return [];
+
+      return [setNodes[0].id];
+    },
+  };
+}
+
+function createVirtualTraversalAdapters(nodes) {
+  return [createKJNodesSetGetTraversalAdapter(nodes)];
+}
+
+function getReachableOriginNodeIds(node, graph, traversalAdapters) {
+  const originIds = getInputOriginNodeIds(node, graph);
+
+  for (const adapter of traversalAdapters) {
+    originIds.push(...adapter.getVirtualOriginNodeIds(node));
+  }
+
+  return originIds;
+}
+
 function getReachableOutputModesByNode(graph, outputNodes) {
   const allNodes = getCurrentGraphNodes(graph);
   const nodesById = new Map(allNodes.map((node) => [node.id, node]));
   const outputModesByNode = new Map(allNodes.map((node) => [node.id, new Set()]));
+  const traversalAdapters = createVirtualTraversalAdapters(allNodes);
 
   for (const outputNode of outputNodes) {
     if (!nodesById.has(outputNode?.id)) continue;
@@ -140,7 +192,7 @@ function getReachableOutputModesByNode(graph, outputNodes) {
       visited.add(node.id);
       outputModesByNode.get(node.id)?.add(outputMode);
 
-      for (const originId of getInputOriginNodeIds(node, graph)) {
+      for (const originId of getReachableOriginNodeIds(node, graph, traversalAdapters)) {
         const originNode = nodesById.get(originId);
         if (originNode && !visited.has(originNode.id)) {
           pending.push(originNode);
