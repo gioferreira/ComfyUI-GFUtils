@@ -342,7 +342,7 @@ test("KJNodes Set/Get virtual links follow output mode cleanup semantics", () =>
   }
 });
 
-test("KJNodes duplicate Set names are treated conservatively", () => {
+test("KJNodes malformed duplicate Set names are treated conservatively", () => {
   const sourceA = createNode(1);
   const setA = kjSetNode(2, "foo");
   const sourceB = createNode(3);

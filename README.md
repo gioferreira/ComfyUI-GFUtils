@@ -71,7 +71,7 @@ Safety:
 - Muted selection only selects nodes with `mode === 2`.
 - Subgraph internals are not traversed; the extension only operates on the main visible graph.
 - Unused-node selection depends on output metadata exposed by the ComfyUI frontend and LiteGraph links.
-- Duplicate KJNodes `SetNode` names are not traversed virtually, which avoids preserving an ambiguous branch by mistake.
+- Malformed or imported graphs with duplicate KJNodes `SetNode` widget values are not traversed virtually, which avoids preserving an ambiguous branch by mistake.
 
 Undo:
 - Use the normal ComfyUI/LiteGraph selection and deletion behavior after reviewing selected nodes.
