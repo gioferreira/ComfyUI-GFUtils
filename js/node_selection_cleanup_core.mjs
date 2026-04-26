@@ -158,6 +158,19 @@ function createKJNodesSetGetTraversalAdapter(nodes) {
   };
 }
 
+function getKJSetNodeNames(nodes) {
+  const names = new Set();
+
+  for (const node of nodes) {
+    if (node?.type !== "SetNode") continue;
+
+    const name = getKJSetGetName(node);
+    if (name) names.add(name);
+  }
+
+  return names;
+}
+
 function createVirtualTraversalAdapters(nodes) {
   return [createKJNodesSetGetTraversalAdapter(nodes)];
 }
@@ -221,6 +234,22 @@ export function createNodeSelectionCleanupController({ app, notify = defaultNoti
     return getAllNodes().filter(isMutedNode);
   }
 
+  function getBypassedNodes() {
+    return getAllNodes().filter(isBypassedNode);
+  }
+
+  function getOrphanKJGetNodes() {
+    const allNodes = getAllNodes();
+    const setNodeNames = getKJSetNodeNames(allNodes);
+
+    return allNodes.filter((node) => {
+      if (node?.type !== "GetNode") return false;
+
+      const name = getKJSetGetName(node);
+      return !name || !setNodeNames.has(name);
+    });
+  }
+
   function getSelectedNodes() {
     return getSelectedNodeValues(app?.canvas?.selected_nodes);
   }
@@ -278,6 +307,30 @@ export function createNodeSelectionCleanupController({ app, notify = defaultNoti
     return mutedNodes.length;
   }
 
+  function selectAllBypassedNodes() {
+    const bypassedNodes = getBypassedNodes();
+    if (bypassedNodes.length === 0) {
+      notify("No bypassed nodes found.");
+      return 0;
+    }
+
+    selectNodes(bypassedNodes);
+    notify(`Selected ${formatCount(bypassedNodes.length, "bypassed node")}.`);
+    return bypassedNodes.length;
+  }
+
+  function selectOrphanKJGetNodes() {
+    const orphanGetNodes = getOrphanKJGetNodes();
+    if (orphanGetNodes.length === 0) {
+      notify("No orphan KJ Get nodes found.");
+      return 0;
+    }
+
+    selectNodes(orphanGetNodes);
+    notify(`Selected ${formatCount(orphanGetNodes.length, "orphan KJ Get node")}.`);
+    return orphanGetNodes.length;
+  }
+
   function getOutputNodes(scope = OUTPUT_SCOPE.NO_OUTPUTS) {
     const cleanupOutputModes = getCleanupOutputModes(scope);
     return getAllNodes().filter((node) => {
@@ -312,11 +365,15 @@ export function createNodeSelectionCleanupController({ app, notify = defaultNoti
   }
 
   return {
+    getBypassedNodes,
     getMutedNodes,
+    getOrphanKJGetNodes,
     getOutputNodes,
     getSelectedNodes,
     getUnusedNodes,
+    selectAllBypassedNodes,
     selectAllMutedNodes,
+    selectOrphanKJGetNodes,
     selectUnusedNodes,
   };
 }

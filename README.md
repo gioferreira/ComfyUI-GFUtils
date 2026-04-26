@@ -38,14 +38,18 @@ This package includes a small frontend-only ComfyUI extension that adds selectio
 
 Features:
 - Select muted nodes
+- Select bypassed nodes
+- Select orphan KJNodes `GetNode` nodes with no matching same-graph `SetNode`
 - Select nodes with no outputs
 - Select nodes with no outputs or only muted outputs
 - Select nodes with no outputs or only bypassed outputs
 - Select nodes with no outputs or only inactive outputs
 
 Usage:
-Right-click the canvas/background and use:
+Right-click the canvas/background and use `GFUtils - Selectors`:
 - Select muted nodes
+- Select bypassed nodes
+- Select orphan KJ Get nodes
 - Select nodes with no outputs
 - Select nodes with no outputs or only muted outputs
 - Select nodes with no outputs or only bypassed outputs
@@ -69,6 +73,8 @@ Output modes:
 Safety:
 - The extension only selects nodes; it does not delete anything directly.
 - Muted selection only selects nodes with `mode === 2`.
+- Bypassed selection only selects nodes with `mode === 4`.
+- Orphan KJ Get selection only selects `GetNode` nodes whose first widget value is absent, empty, or has no same-graph `SetNode` match.
 - Subgraph internals are not traversed; the extension only operates on the main visible graph.
 - Unused-node selection depends on output metadata exposed by the ComfyUI frontend and LiteGraph links.
 - Malformed or imported graphs with duplicate KJNodes `SetNode` widget values are not traversed virtually, which avoids preserving an ambiguous branch by mistake.

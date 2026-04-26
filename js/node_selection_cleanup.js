@@ -1,8 +1,6 @@
 import { app } from "../../scripts/app.js";
-import {
-  OUTPUT_SCOPE,
-  createNodeSelectionCleanupController,
-} from "./node_selection_cleanup_core.mjs";
+import { createNodeSelectionCleanupController } from "./node_selection_cleanup_core.mjs";
+import { createNodeSelectionCleanupMenuOption } from "./node_selection_cleanup_menu.mjs";
 
 const EXTENSION_NAME = "giovani.nodeSelectionCleanup";
 const PATCH_FLAG = "__giovaniNodeSelectionCleanupPatched";
@@ -47,26 +45,7 @@ app.registerExtension({
       const options = Array.isArray(originalOptions) ? originalOptions : [];
 
       options.push(null);
-      options.push({
-        content: "Select muted nodes",
-        callback: () => controller.selectAllMutedNodes(),
-      });
-      options.push({
-        content: "Select nodes with no outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS),
-      });
-      options.push({
-        content: "Select nodes with no outputs or only muted outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_MUTED_OUTPUTS),
-      });
-      options.push({
-        content: "Select nodes with no outputs or only bypassed outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_BYPASSED_OUTPUTS),
-      });
-      options.push({
-        content: "Select nodes with no outputs or only inactive outputs",
-        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.NO_OUTPUTS_OR_INACTIVE_OUTPUTS),
-      });
+      options.push(createNodeSelectionCleanupMenuOption(controller));
 
       return options;
     };

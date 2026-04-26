@@ -110,6 +110,9 @@ test("controller exposes selection-only cleanup actions", () => {
   const { controller } = createHarness([]);
 
   assert.equal(typeof controller.selectAllMutedNodes, "function");
+  assert.equal(typeof controller.selectAllBypassedNodes, "function");
+  assert.equal(typeof controller.selectOrphanKJGetNodes, "function");
+  assert.equal(typeof controller.getOrphanKJGetNodes, "function");
   assert.equal(typeof controller.selectUnusedNodes, "function");
   assert.equal(typeof controller.getUnusedNodes, "function");
   assert.equal("deleteAllMutedNodes" in controller, false);
@@ -135,6 +138,52 @@ test("selectAllMutedNodes selects exactly muted nodes and clears existing select
   assert.equal(bypassed.is_selected, false);
   assert.equal(mutedB.is_selected, true);
   assert.deepEqual(notices, ["Selected 2 muted nodes."]);
+});
+
+test("selectAllBypassedNodes selects exactly bypassed nodes and clears existing selection", () => {
+  const normal = createNode(1, 0);
+  const muted = createNode(2, MUTED_MODE);
+  const bypassedA = createNode(3, BYPASSED_MODE);
+  const bypassedB = createNode(4, BYPASSED_MODE);
+  normal.is_selected = true;
+
+  const { app, controller, notices } = createHarness([normal, muted, bypassedA, bypassedB]);
+  app.canvas.selected_nodes = { [normal.id]: normal };
+
+  const count = controller.selectAllBypassedNodes();
+
+  assert.equal(count, 2);
+  assert.deepEqual(selectedIds(app), [3, 4]);
+  assert.equal(normal.is_selected, false);
+  assert.equal(muted.is_selected, false);
+  assert.equal(bypassedA.is_selected, true);
+  assert.equal(bypassedB.is_selected, true);
+  assert.deepEqual(notices, ["Selected 2 bypassed nodes."]);
+});
+
+test("selectOrphanKJGetNodes selects GetNodes without same-graph SetNodes", () => {
+  const setNode = kjSetNode(1, "foo");
+  const pairedGet = kjGetNode(2, "foo");
+  const orphanGet = kjGetNode(3, "bar");
+  const emptyNameGet = kjGetNode(4, "");
+  const missingWidgetGet = createNode(5, 0, { type: "GetNode" });
+  const otherNode = createNode(6);
+  const otherGraphSet = kjSetNode(7, "bar", { graph: null });
+  const { app, controller, notices } = createHarness([
+    setNode,
+    pairedGet,
+    orphanGet,
+    emptyNameGet,
+    missingWidgetGet,
+    otherNode,
+    otherGraphSet,
+  ]);
+
+  const count = controller.selectOrphanKJGetNodes();
+
+  assert.equal(count, 3);
+  assert.deepEqual(selectedIds(app), [3, 4, 5]);
+  assert.deepEqual(notices, ["Selected 3 orphan KJ Get nodes."]);
 });
 
 test("selectUnusedNodes selects nodes that do not reach any output", () => {
