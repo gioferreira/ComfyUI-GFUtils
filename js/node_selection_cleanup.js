@@ -1,15 +1,18 @@
 import { app } from "../../scripts/app.js";
-import { createCleanMutedNodesController } from "./clean_muted_nodes_core.mjs";
+import {
+  OUTPUT_SCOPE,
+  createNodeSelectionCleanupController,
+} from "./node_selection_cleanup_core.mjs";
 
-const EXTENSION_NAME = "giovani.cleanMutedNodes";
-const PATCH_FLAG = "__giovaniCleanMutedNodesPatched";
+const EXTENSION_NAME = "giovani.nodeSelectionCleanup";
+const PATCH_FLAG = "__giovaniNodeSelectionCleanupPatched";
 
 function notify(message) {
   const toast = app.extensionManager?.toast;
   if (typeof toast?.add === "function") {
     toast.add({
       severity: "info",
-      summary: "Clean Muted Nodes",
+      summary: "Node Selection Cleanup",
       detail: message,
       life: 3000,
     });
@@ -31,9 +34,8 @@ app.registerExtension({
       return;
     }
 
-    const controller = createCleanMutedNodesController({
+    const controller = createNodeSelectionCleanupController({
       app,
-      confirm: (message) => globalThis.confirm(message),
       notify,
     });
     const originalGetCanvasMenuOptions = CanvasClass.prototype.getCanvasMenuOptions;
@@ -46,16 +48,24 @@ app.registerExtension({
 
       options.push(null);
       options.push({
-        content: "Select all muted nodes",
+        content: "Select muted nodes",
         callback: () => controller.selectAllMutedNodes(),
       });
       options.push({
-        content: "Delete selected muted nodes...",
-        callback: () => controller.deleteSelectedMutedNodes(),
+        content: "Select unused nodes from active outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE),
       });
       options.push({
-        content: "Delete all muted nodes...",
-        callback: () => controller.deleteAllMutedNodes(),
+        content: "Select unused nodes from active + muted outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE_AND_MUTED),
+      });
+      options.push({
+        content: "Select unused nodes from active + bypassed outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ACTIVE_AND_BYPASSED),
+      });
+      options.push({
+        content: "Select unused nodes from all outputs",
+        callback: () => controller.selectUnusedNodes(OUTPUT_SCOPE.ALL),
       });
 
       return options;

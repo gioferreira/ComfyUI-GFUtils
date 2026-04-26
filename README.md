@@ -8,7 +8,7 @@ It currently includes:
 - a local image save node that writes directly to an absolute file path
 - a torch-based masked video recombine node for frame-by-frame foreground/background merges
 - a separate debug variant for inspecting processed masks and masked layers without baking that cost into the main node
-- a frontend cleanup tool for selecting and deleting muted nodes
+- a frontend cleanup tool for selecting muted or unused nodes
 - S3 image input/output nodes
 - S3 ZIP input/output nodes
 - a batch image processing node for resize, crop, and pad flows
@@ -33,28 +33,45 @@ It currently includes:
 - `FlowMatchAutoConfig`
 - `FlowMatchGuide`
 
-## Clean Muted Nodes
-This package includes a small frontend-only ComfyUI extension that adds cleanup actions for muted nodes.
+## Node Selection Cleanup
+This package includes a small frontend-only ComfyUI extension that adds selection helpers for muted and unused nodes. It does not delete nodes directly; inspect the selection and use the normal LiteGraph delete flow if you want to remove them.
 
 Features:
-- Select all muted nodes
-- Delete selected muted nodes
-- Delete all muted nodes
+- Select muted nodes
+- Select unused nodes from active outputs
+- Select unused nodes from active + muted outputs
+- Select unused nodes from active + bypassed outputs
+- Select unused nodes from all outputs
 
 Usage:
 Right-click the canvas/background and use:
-- Select all muted nodes
-- Delete selected muted nodes...
-- Delete all muted nodes...
+- Select muted nodes
+- Select unused nodes from active outputs
+- Select unused nodes from active + muted outputs
+- Select unused nodes from active + bypassed outputs
+- Select unused nodes from all outputs
+
+Unused node detection:
+- The extension starts from eligible output nodes and walks backward through input links.
+- Nodes reached by that reverse traversal are treated as useful.
+- Nodes not reached are selected as unused candidates.
+- Disconnected cycles and isolated node chains are selected when they do not feed an eligible output.
+- If no eligible output exists for the chosen mode, nothing is selected.
+
+Output modes:
+- Active outputs ignores muted (`mode === 2`) and bypassed (`mode === 4`) output nodes.
+- Active + muted outputs also preserves branches feeding muted output nodes.
+- Active + bypassed outputs also preserves branches feeding bypassed output nodes.
+- All outputs preserves branches feeding active, muted, and bypassed output nodes.
 
 Safety:
-- Only nodes with `mode === 2` are affected.
-- Bypassed nodes with `mode === 4` are preserved.
+- The extension only selects nodes; it does not delete anything directly.
+- Muted selection only selects nodes with `mode === 2`.
 - Subgraph internals are not traversed; the extension only operates on the main visible graph.
-- Destructive actions always ask for confirmation first.
+- Unused-node selection depends on output metadata exposed by the ComfyUI frontend and LiteGraph links.
 
 Undo:
-- Deletion uses LiteGraph's `graph.remove(node)`. Undo behavior depends on the ComfyUI frontend version in use, so save or duplicate important workflows before large cleanups.
+- Use the normal ComfyUI/LiteGraph selection and deletion behavior after reviewing selected nodes.
 
 Tested with:
 - Automated core tests: Node.js v23.11.0
@@ -118,4 +135,4 @@ S3_SECRET_KEY=your-secret-key
 - `SaveImageAbsolutePath` writes an image directly to a full absolute file path such as `D:\DevRev\Select_PNG\005_AGENTESTUDIO\Agent_00006_pose.png` on Windows or `/home/user/output/image.png` on macOS/Linux.
 - `VideoMaskedRecombine` normalizes RGB/RGBA inputs to RGB, resizes the mask if needed, and returns a single merged image batch.
 - `VideoMaskedRecombineDebug` runs the same recombine path but also returns `processed_mask`, `foreground_masked`, and `background_masked` for inspection.
-- `Clean Muted Nodes` is frontend-only and registers as `giovani.cleanMutedNodes`.
+- `Node Selection Cleanup` is frontend-only and registers as `giovani.nodeSelectionCleanup`.
